@@ -212,7 +212,7 @@ restaurar_banco() {
 
     read -p "Digite o nome do arquivo SQL na pasta root (ex: backup.sql): " arquivo_sql
 
-    # Adiciona o caminho da pasta root se o arquivo não tiver um caminho especificado
+    # Manter o caminho do arquivo como inserido pelo usuário
     if [[ "$arquivo_sql" != /* ]]; then
         arquivo_sql="/root/$arquivo_sql"
     fi
@@ -220,6 +220,8 @@ restaurar_banco() {
     # Verifica se o arquivo SQL existe
     if [ -f "$arquivo_sql" ]; then
         echo "Restaurando o banco de dados $nome_banco a partir do arquivo $arquivo_sql..."
+        
+        # Evite mudar para /root, navegue em diretórios seguros
         cd /tmp || exit
 
         # Destrói e recria o banco de dados antes de restaurar
@@ -232,6 +234,7 @@ restaurar_banco() {
         echo "Erro: Arquivo $arquivo_sql não encontrado!"
     fi
 }
+
 
 # Função para criar um backup do banco de dados
 fazer_backup() {
