@@ -207,17 +207,17 @@ restaurar_banco() {
         return
     fi
 
-    # Realiza o backup de segurança antes de destruir o banco de dados, se não estiver vazio
+    # Realiza o backup de segurança antes de destruir o banco de dados
     backup_seguranca "$nome_banco"
 
     read -p "Digite o nome do arquivo SQL na pasta root (ex: backup.sql): " arquivo_sql
-    arquivo_sql=$(sanitizar_nome "$arquivo_sql")
 
     # Adiciona o caminho da pasta root se o arquivo não tiver um caminho especificado
     if [[ "$arquivo_sql" != /* ]]; then
         arquivo_sql="/root/$arquivo_sql"
     fi
 
+    # Verifica se o arquivo SQL existe
     if [ -f "$arquivo_sql" ]; then
         echo "Restaurando o banco de dados $nome_banco a partir do arquivo $arquivo_sql..."
         cd /tmp || exit
@@ -229,7 +229,7 @@ restaurar_banco() {
         sudo -u postgres psql "$nome_banco" < "$arquivo_sql" 2>/dev/null
         echo "Restauração concluída com sucesso!"
     else
-        echo "Arquivo $arquivo_sql não encontrado!"
+        echo "Erro: Arquivo $arquivo_sql não encontrado!"
     fi
 }
 
