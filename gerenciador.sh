@@ -6,9 +6,6 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Define um diretório padrão para backups que o usuário postgres pode acessar
-BACKUP_DIR="/var/backups"
-
 # Função para instalar o PostgreSQL
 instalar_postgresql() {
     # Verifica se o PostgreSQL já está instalado
@@ -22,7 +19,7 @@ instalar_postgresql() {
     sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
     wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
     sudo apt-get update -y && sudo apt-get -y install postgresql-15
-
+    
     if [ $? -eq 0 ]; then
         echo "PostgreSQL 15 instalado com sucesso!"
         echo "Reiniciando o serviço PostgreSQL..."
@@ -96,7 +93,7 @@ revogar_permissoes() {
 # Função para remover caracteres especiais de um nome, permitindo apenas letras e números
 sanitizar_nome() {
     local nome="$1"
-    nome=$(echo "$nome" | tr -cd '[:alnum:]._')
+    nome=$(echo "$nome" | tr -cd '[:alnum:]')
     echo "$nome"
 }
 
@@ -114,20 +111,25 @@ validar_nome() {
 # Função para criar um backup de segurança do banco de dados antes de restaurar
 backup_seguranca() {
     local nome_banco="$1"
+    local caminho_backup="/root/bkseguraca"
 
+    # Verifica se o banco de dados está vazio
     if banco_existe "$nome_banco"; then
         echo "O banco de dados $nome_banco está vazio. Nenhum backup de segurança necessário."
         return
     fi
 
-    if [ ! -d "$BACKUP_DIR" ]; then
-        echo "Criando o diretório de backup de segurança em $BACKUP_DIR..."
-        mkdir -p "$BACKUP_DIR"
-        chown postgres:postgres "$BACKUP_DIR"
+    # Verifica se o diretório de backup de segurança existe, caso contrário, cria
+    if [ ! -d "$caminho_backup" ]; then
+        echo "Criando o diretório de backup de segurança em $caminho_backup..."
+        mkdir -p "$caminho_backup"
     fi
 
-    local arquivo_backup="$BACKUP_DIR/${nome_banco}_backup_seguranca_$(date +%Y%m%d%H%M%S).sql"
+    # Define o nome do arquivo de backup de segurança
+    local arquivo_backup="$caminho_backup/${nome_banco}_backup_seguranca_$(date +%Y%m%d%H%M%S).sql"
+
     echo "Criando backup de segurança do banco de dados $nome_banco para o arquivo $arquivo_backup..."
+    cd /tmp || exit
     sudo -u postgres pg_dump "$nome_banco" > "$arquivo_backup"
 
     if [ $? -eq 0 ]; then
@@ -140,6 +142,7 @@ backup_seguranca() {
 # Função para listar todos os usuários do PostgreSQL
 listar_usuarios() {
     echo "Listando todos os usuários do PostgreSQL:"
+    cd /tmp || exit
     sudo -u postgres psql -P pager=off -c "\du" 2>/dev/null
 }
 
@@ -174,9 +177,13 @@ criar_usuario() {
     done
 
     echo "Criando usuário e banco de dados..."
+
+    cd /tmp || exit
+
     sudo -u postgres psql -c "CREATE USER $nome_usuario WITH PASSWORD '$senha' SUPERUSER CREATEDB CREATEROLE;" 2>/dev/null
     sudo -u postgres psql -c "CREATE DATABASE $nome_banco OWNER $nome_usuario;" 2>/dev/null
     sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $nome_banco TO $nome_usuario;" 2>/dev/null
+
     echo "Usuário $nome_usuario criado com sucesso, com permissões atribuídas, e banco $nome_banco configurado!"
 }
 
@@ -194,21 +201,31 @@ restaurar_banco() {
     read -p "Digite o nome do banco de dados que deseja restaurar: " nome_banco
     nome_banco=$(sanitizar_nome "$nome_banco")
 
+    # Verifica se o banco de dados existe
     if ! banco_existe "$nome_banco"; then
         echo "Erro: O banco de dados $nome_banco não existe!"
         return
     fi
 
+    # Realiza o backup de segurança antes de destruir o banco de dados, se não estiver vazio
     backup_seguranca "$nome_banco"
 
-    read -p "Digite o nome do arquivo SQL na pasta de backups (ex: backup.sql): " arquivo_sql
+    read -p "Digite o nome do arquivo SQL na pasta root (ex: backup.sql): " arquivo_sql
     arquivo_sql=$(sanitizar_nome "$arquivo_sql")
 
-    arquivo_sql="$BACKUP_DIR/$arquivo_sql"
+    # Adiciona o caminho da pasta root se o arquivo não tiver um caminho especificado
+    if [[ "$arquivo_sql" != /* ]]; then
+        arquivo_sql="/root/$arquivo_sql"
+    fi
 
     if [ -f "$arquivo_sql" ]; then
         echo "Restaurando o banco de dados $nome_banco a partir do arquivo $arquivo_sql..."
+        cd /tmp || exit
+
+        # Destrói e recria o banco de dados antes de restaurar
         recriar_banco "$nome_banco"
+        
+        # Restaurar o banco de dados
         sudo -u postgres psql "$nome_banco" < "$arquivo_sql" 2>/dev/null
         echo "Restauração concluída com sucesso!"
     else
@@ -222,11 +239,13 @@ fazer_backup() {
         read -p "Digite o nome do banco de dados que deseja fazer backup: " nome_banco
         nome_banco=$(sanitizar_nome "$nome_banco")
 
+        # Verifica se o nome está vazio ou inválido
         if [[ -z "$nome_banco" ]] || ! validar_nome "$nome_banco"; then
             echo "Erro: O nome do banco de dados deve conter apenas letras e números e não pode estar vazio."
             continue
         fi
 
+        # Verifica se o banco de dados existe
         if ! banco_existe "$nome_banco"; then
             echo "Erro: O banco de dados $nome_banco não existe!"
             continue
@@ -235,21 +254,26 @@ fazer_backup() {
         break
     done
 
-    read -p "Digite o caminho completo para salvar o backup (padrão: $BACKUP_DIR): " caminho_backup
+    read -p "Digite o caminho completo para salvar o backup (padrão: /root): " caminho_backup
     caminho_backup=$(sanitizar_nome "$caminho_backup")
 
+    # Define o caminho padrão para o root se não for especificado
     if [ -z "$caminho_backup" ]; then
-        caminho_backup="$BACKUP_DIR"
+        caminho_backup="/root"
     fi
 
+    # Verifica se o diretório existe, se não existir, cria
     if [ ! -d "$caminho_backup" ]; then
         echo "Diretório $caminho_backup não existe. Criando..."
         mkdir -p "$caminho_backup"
-        chown postgres:postgres "$caminho_backup"
     fi
 
+    # Define o nome do arquivo de backup
     arquivo_backup="$caminho_backup/${nome_banco}_backup_$(date +%Y%m%d%H%M%S).sql"
+
+    # Executa o backup no diretório /tmp para evitar problemas de permissão
     echo "Fazendo backup do banco de dados $nome_banco para o arquivo $arquivo_backup..."
+    cd /tmp || exit
     sudo -u postgres pg_dump "$nome_banco" > "$arquivo_backup"
 
     if [ $? -eq 0 ]; then
@@ -262,6 +286,7 @@ fazer_backup() {
 # Função para deletar um usuário, banco e suas permissões
 deletar_usuario() {
     echo "Listando todos os usuários do PostgreSQL:"
+    cd /tmp || exit
     usuarios=($(sudo -u postgres psql -c "\du" | awk '{print $1}' | grep -vE "Role|postgres|---------"))
 
     if [ ${#usuarios[@]} -eq 0 ]; then
@@ -288,14 +313,17 @@ deletar_usuario() {
         if [[ "$confirmacao" =~ ^[Ss]$ ]]; then
             banco_usuario=$(sudo -u postgres psql -lqt | cut -d \| -f 1 | awk '{$1=$1};1' | grep -w "$nome_usuario")
 
+            # Desconectar usuários conectados ao banco de dados
             if banco_existe "$banco_usuario"; then
                 desconectar_usuarios "$banco_usuario"
                 sudo -u postgres psql -c "DROP DATABASE IF EXISTS $banco_usuario;" 2>/dev/null
             fi
-
+            
+            # Revogar permissões e excluir o usuário
             revogar_permissoes "$nome_usuario"
             sudo -u postgres psql -c "DROP USER IF EXISTS $nome_usuario;" 2>/dev/null
-
+            
+            # Verificar se o usuário foi removido
             if sudo -u postgres psql -c "\du" | grep -qw "$nome_usuario"; then
                 echo "Erro: Falha ao deletar o usuário $nome_usuario. Verifique se há dependências."
             else
