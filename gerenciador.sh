@@ -6,6 +6,65 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Função para instalar o PostgreSQL
+instalar_postgresql() {
+    # Verifica se o PostgreSQL já está instalado
+    if dpkg -l | grep -qw postgresql; then
+        echo "PostgreSQL já está instalado."
+        return
+    fi
+
+    echo "Instalando PostgreSQL 15..."
+    sudo apt-get install gnupg -y
+    sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+    sudo apt-get update -y && sudo apt-get -y install postgresql-15
+    
+    if [ $? -eq 0 ]; then
+        echo "PostgreSQL 15 instalado com sucesso!"
+        echo "Reiniciando o serviço PostgreSQL..."
+        sudo systemctl restart postgresql
+    else
+        echo "Erro ao instalar o PostgreSQL."
+    fi
+}
+
+# Função para iniciar o serviço PostgreSQL
+iniciar_postgresql() {
+    # Verifica se o serviço já está em execução
+    if systemctl is-active --quiet postgresql; then
+        echo "PostgreSQL já está em execução."
+    else
+        echo "Iniciando o serviço PostgreSQL..."
+        sudo systemctl start postgresql
+        if systemctl is-active --quiet postgresql; then
+            echo "Serviço PostgreSQL iniciado com sucesso."
+        else
+            echo "Erro ao iniciar o serviço PostgreSQL."
+        fi
+    fi
+}
+
+# Função para parar o serviço PostgreSQL
+parar_postgresql() {
+    echo "Parando o serviço PostgreSQL..."
+    sudo systemctl stop postgresql
+    echo "Serviço PostgreSQL parado."
+}
+
+# Função para reiniciar o serviço PostgreSQL
+reiniciar_postgresql() {
+    echo "Reiniciando o serviço PostgreSQL..."
+    sudo systemctl restart postgresql
+    echo "Serviço PostgreSQL reiniciado."
+}
+
+# Função para verificar o status do serviço PostgreSQL
+status_postgresql() {
+    echo "Verificando o status do serviço PostgreSQL..."
+    sudo systemctl status postgresql
+}
+
 # Função para verificar se um banco de dados existe
 banco_existe() {
     local nome_banco="$1"
@@ -283,22 +342,32 @@ while true; do
     echo "----------------------------"
     echo "     Gerenciador PostgreSQL"
     echo "----------------------------"
-    echo "1. Listar todos os usuários"
-    echo "2. Criar um novo usuário"
-    echo "3. Restaurar banco de dados"
-    echo "4. Fazer backup do banco de dados"
-    echo "5. Deletar usuário e banco de dados"
-    echo "6. Sair"
+    echo "1. Instalar PostgreSQL"
+    echo "2. Iniciar PostgreSQL"
+    echo "3. Parar PostgreSQL"
+    echo "4. Reiniciar PostgreSQL"
+    echo "5. Ver status do PostgreSQL"
+    echo "6. Listar todos os usuários"
+    echo "7. Criar um novo usuário"
+    echo "8. Restaurar banco de dados"
+    echo "9. Fazer backup do banco de dados"
+    echo "10. Deletar usuário e banco de dados"
+    echo "11. Sair"
     echo "----------------------------"
     read -p "Escolha uma opção: " opcao
 
     case $opcao in
-        1) listar_usuarios ;;
-        2) criar_usuario ;;
-        3) restaurar_banco ;;
-        4) fazer_backup ;;
-        5) deletar_usuario ;;
-        6) echo "Saindo..."; exit 0 ;;
+        1) instalar_postgresql ;;
+        2) iniciar_postgresql ;;
+        3) parar_postgresql ;;
+        4) reiniciar_postgresql ;;
+        5) status_postgresql ;;
+        6) listar_usuarios ;;
+        7) criar_usuario ;;
+        8) restaurar_banco ;;
+        9) fazer_backup ;;
+        10) deletar_usuario ;;
+        11) echo "Saindo..."; exit 0 ;;
         *) echo "Opção inválida!";;
     esac
 done
