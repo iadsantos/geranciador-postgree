@@ -196,6 +196,39 @@ recriar_banco() {
     sudo -u postgres psql -c "CREATE DATABASE $nome_banco;" 2>/dev/null
 }
 
+# Função para criar um backup de segurança do banco de dados antes de restaurar
+backup_seguranca() {
+    local nome_banco="$1"
+    local caminho_backup="/root/bkseguraca"
+
+    # Verifica se o banco de dados tem tabelas
+    local tabela_existe=$(sudo -u postgres psql -d "$nome_banco" -c "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public');" -tA)
+
+    # Só cria backup se houver tabelas no banco de dados
+    if [[ "$tabela_existe" != "t" ]]; then
+        echo "O banco de dados $nome_banco está vazio. Nenhum backup de segurança necessário."
+        return
+    fi
+
+    # Verifica se o diretório de backup de segurança existe, caso contrário, cria
+    if [ ! -d "$caminho_backup" ]; then
+        echo "Criando o diretório de backup de segurança em $caminho_backup..."
+        mkdir -p "$caminho_backup"
+    fi
+
+    # Define o nome do arquivo de backup de segurança
+    local arquivo_backup="$caminho_backup/${nome_banco}_backup_seguranca_$(date +%Y%m%d%H%M%S).sql"
+
+    echo "Criando backup de segurança do banco de dados $nome_banco para o arquivo $arquivo_backup..."
+    sudo -u postgres pg_dump "$nome_banco" > "$arquivo_backup"
+
+    if [ $? -eq 0 ]; then
+        echo "Backup de segurança concluído com sucesso em $arquivo_backup!"
+    else
+        echo "Erro ao criar o backup de segurança do banco de dados $nome_banco."
+    fi
+}
+
 # Função para restaurar um banco de dados a partir de um arquivo SQL
 restaurar_banco() {
     read -p "Digite o nome do banco de dados que deseja restaurar: " nome_banco
@@ -207,31 +240,62 @@ restaurar_banco() {
         return
     fi
 
-    # Realiza o backup de segurança antes de destruir o banco de dados, se não estiver vazio
+    # Realiza o backup de segurança antes de destruir o banco de dados
     backup_seguranca "$nome_banco"
 
     read -p "Digite o nome do arquivo SQL na pasta root (ex: backup.sql): " arquivo_sql
-    arquivo_sql=$(sanitizar_nome "$arquivo_sql")
 
     # Adiciona o caminho da pasta root se o arquivo não tiver um caminho especificado
     if [[ "$arquivo_sql" != /* ]]; then
         arquivo_sql="/root/$arquivo_sql"
     fi
 
+    # Verifica se o arquivo SQL existe
     if [ -f "$arquivo_sql" ]; then
         echo "Restaurando o banco de dados $nome_banco a partir do arquivo $arquivo_sql..."
-        cd /tmp || exit
-
-        # Destrói e recria o banco de dados antes de restaurar
-        recriar_banco "$nome_banco"
         
-        # Restaurar o banco de dados
+        # Não muda para /root, execute diretamente os comandos necessários
         sudo -u postgres psql "$nome_banco" < "$arquivo_sql" 2>/dev/null
         echo "Restauração concluída com sucesso!"
     else
-        echo "Arquivo $arquivo_sql não encontrado!"
+        echo "Erro: Arquivo $arquivo_sql não encontrado!"
     fi
 }
+
+
+# Função para restaurar um banco de dados a partir de um arquivo SQL
+restaurar_banco() {
+    read -p "Digite o nome do banco de dados que deseja restaurar: " nome_banco
+    nome_banco=$(sanitizar_nome "$nome_banco")
+
+    # Verifica se o banco de dados existe
+    if ! banco_existe "$nome_banco"; then
+        echo "Erro: O banco de dados $nome_banco não existe!"
+        return
+    fi
+
+    # Realiza o backup de segurança antes de destruir o banco de dados
+    backup_seguranca "$nome_banco"
+
+    read -p "Digite o nome do arquivo SQL na pasta root (ex: backup.sql): " arquivo_sql
+
+    # Adiciona o caminho da pasta root se o arquivo não tiver um caminho especificado
+    if [[ "$arquivo_sql" != /* ]]; then
+        arquivo_sql="/root/$arquivo_sql"
+    fi
+
+    # Verifica se o arquivo SQL existe
+    if [ -f "$arquivo_sql" ]; then
+        echo "Restaurando o banco de dados $nome_banco a partir do arquivo $arquivo_sql..."
+        
+        # Não muda para /root, execute diretamente os comandos necessários
+        sudo -u postgres psql "$nome_banco" < "$arquivo_sql" 2>/dev/null
+        echo "Restauração concluída com sucesso!"
+    else
+        echo "Erro: Arquivo $arquivo_sql não encontrado!"
+    fi
+}
+
 
 # Função para criar um backup do banco de dados
 fazer_backup() {
