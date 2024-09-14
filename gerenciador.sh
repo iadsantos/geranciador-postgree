@@ -40,24 +40,57 @@ fi
 WORK_DIR="/home"
 cd "$WORK_DIR" || exit
 
-# Função para instalar o PostgreSQL
+# Função para instalar ou atualizar o PostgreSQL
 instalar_postgresql() {
-    if dpkg -l | grep -qw postgresql; then
-        echo "PostgreSQL já está instalado."
-        return
-    fi
+    echo "Escolha a versão do PostgreSQL para instalar ou atualizar:"
+    echo "1. Instalar PostgreSQL 15"
+    echo "2. Instalar a versão mais recente do PostgreSQL"
+    echo "3. Atualizar do PostgreSQL 15 para o 16"
+    read -p "Digite a opção desejada (1, 2 ou 3): " opcao
 
-    echo "Instalando PostgreSQL 15..."
-    sudo apt-get install gnupg -y
-    sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-    sudo apt-get update -y && sudo apt-get -y install postgresql-15
-    
+    case $opcao in
+        1)
+            if dpkg -l | grep -qw postgresql-15; then
+                echo "PostgreSQL 15 já está instalado."
+                return
+            fi
+
+            echo "Instalando PostgreSQL 15..."
+            sudo apt-get install gnupg -y
+            sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+            wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+            sudo apt-get update -y && sudo apt-get -y install postgresql-15
+            ;;
+        2)
+            echo "Instalando a versão mais recente do PostgreSQL..."
+            sudo apt-get install gnupg -y
+            sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+            wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+            sudo apt-get update -y && sudo apt-get -y install postgresql
+            ;;
+        3)
+            if dpkg -l | grep -qw postgresql-15; then
+                echo "Atualizando do PostgreSQL 15 para o 16..."
+                sudo apt-get install gnupg -y
+                sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+                wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+                sudo apt-get update -y && sudo apt-get -y install postgresql-16
+                echo "Atualização para o PostgreSQL 16 concluída com sucesso!"
+            else
+                echo "PostgreSQL 15 não está instalado, atualização não pode ser realizada."
+            fi
+            ;;
+        *)
+            echo "Opção inválida. Abortando a instalação."
+            return
+            ;;
+    esac
+
     if [ $? -eq 0 ]; then
-        echo "PostgreSQL 15 instalado com sucesso!"
+        echo "PostgreSQL instalado ou atualizado com sucesso!"
         sudo systemctl restart postgresql
     else
-        echo "Erro ao instalar o PostgreSQL."
+        echo "Erro ao instalar ou atualizar o PostgreSQL."
     fi
 }
 
