@@ -1,66 +1,61 @@
 
-## Novidades da Versão 4 🚀
+## 🚀 Gerenciador de PostgreSQL - Versão Atualizada 🎉
 
-A versão 4 do Gerenciador PostgreSQL traz várias melhorias e novas funcionalidades para facilitar ainda mais a administração do seu banco de dados:
+Este script Bash é um gerenciador completo para o PostgreSQL, permitindo a instalação, gerenciamento de usuários, backup, restauração e diversas outras operações diretamente do terminal. 🖥️
 
-### 1. Detecção de Execução na Pasta `/root`
-O script agora detecta quando é executado na pasta `/root` e oferece a opção de mover automaticamente para a pasta `/home` para evitar problemas de permissão.
+### 🛠️ Funcionalidades Disponíveis
 
-### 2. Execução Automática na Nova Localização
-Após mover o script, ele é executado automaticamente na nova localização, garantindo que o fluxo de trabalho não seja interrompido.
+1. **📥 Instalar PostgreSQL**: Permite instalar a versão 15, a versão mais recente, ou atualizar do PostgreSQL 15 para o 16.
+2. **👤 Criar um novo usuário**: Criação de um novo usuário no PostgreSQL com permissões especificadas.
+3. **🗑️ Deletar usuário e banco de dados**: Remove o usuário selecionado e o banco de dados associado.
+4. **📜 Listar todos os usuários**: Lista todos os usuários existentes no PostgreSQL.
+5. **💾 Fazer backup do banco de dados**: Cria um backup do banco de dados especificado no formato compatível com `pg_restore`.
+6. **🛡️ Restaurar banco de dados**: Restaura um banco de dados a partir de um arquivo de backup, com opção de realizar backup de segurança antes da restauração.
+7. **📊 Ver tamanho dos bancos de dados**: Mostra o tamanho de todos os bancos de dados existentes.
+8. **▶️ Iniciar PostgreSQL**: Inicia o serviço do PostgreSQL.
+9. **⏹️ Parar PostgreSQL**: Para o serviço do PostgreSQL.
+10. **🔄 Reiniciar PostgreSQL**: Reinicia o serviço do PostgreSQL.
+11. **📡 Ver status do PostgreSQL**: Exibe o status atual do serviço do PostgreSQL.
+12. **🧹 Desinstalar PostgreSQL e apagar tudo**: Desinstala completamente o PostgreSQL e apaga todos os dados relacionados.
+13. **🚪 Sair**: Encerra o script.
 
-### 3. Backup de Segurança Opcional
-Ao restaurar um banco de dados, o usuário pode optar por realizar um backup de segurança antes do processo de restauração.
+### 📋 Instruções de Uso
 
-### 4. Formato Atualizado de Backup
-Os backups agora são salvos com o novo formato de data, facilitando a identificação: `nome_01_09_2023_01-01hr`.
+1. **🔒 Permissões Necessárias**: O script deve ser executado como root para garantir o funcionamento correto das operações de instalação, gerenciamento e backups.
+2. **⚙️ Execução**: O script original se chama `gerenciador.sh` e deve ser criado no diretório `/home`. Para executar o script, certifique-se de que ele é executável com o comando:
+   ```bash
+   chmod +x /home/gerenciador.sh
+   ```
+   Em seguida, rode o script com:
+   ```bash
+   sudo /home/gerenciador.sh
+   ```
+3. **🎯 Escolha de Opções**: Utilize o menu interativo para escolher as opções desejadas, respondendo conforme as instruções na tela.
 
-Essas melhorias tornam o script mais robusto e adaptável, mantendo o foco na segurança e eficiência na gestão dos seus bancos de dados.
+### 📌 Requisitos
 
-# Gerenciador PostgreSQL 🚀
+- 🐧 Sistema operacional Linux com suporte para Bash.
+- 🌐 Conexão à internet para instalação de pacotes.
+- 👑 Permissões de root para instalar, iniciar, parar, e gerenciar o PostgreSQL.
 
-Bem-vindo ao **Gerenciador PostgreSQL**! Este script é uma ferramenta poderosa e fácil de usar que ajuda você a gerenciar seu banco de dados PostgreSQL com facilidade e eficiência. Criado para desenvolvedores, DBAs e entusiastas, ele oferece uma interface interativa para realizar tarefas comuns com o PostgreSQL diretamente do terminal.
+### 🚀 Melhorias na Versão Atual
 
-## Funcionalidades 🛠️
+- **🔐 Autenticação Flexível**: Ajuste de métodos de autenticação para evitar erros comuns de conexão.
+- **🛡️ Backup com Segurança**: Implementação de backups automáticos de segurança antes da restauração de bancos de dados.
+- **🧹 Desinstalação Completa**: Função aprimorada para remover completamente o PostgreSQL e seus dados.
+- **📏 Gestão Avançada de Tamanho**: Visualização do tamanho dos bancos para um melhor gerenciamento de recursos.
 
-### 1. Instalar PostgreSQL
-Instala a versão mais recente do PostgreSQL (15) no seu sistema. Se o PostgreSQL já estiver instalado, o script informará você, evitando instalações desnecessárias.
+### ⚠️ Observações
 
-### 2. Iniciar PostgreSQL
-Inicia o serviço do PostgreSQL, verificando primeiro se o serviço já está em execução para evitar redundâncias.
+- **🚫 Executar Fora da Pasta /root**: O script recomenda a execução fora da pasta `/root` para evitar problemas de permissão e segurança.
 
-### 3. Parar PostgreSQL
-Para o serviço do PostgreSQL, útil quando você precisa realizar manutenções ou ajustes no sistema.
 
-### 4. Reiniciar PostgreSQL
-Reinicia o serviço do PostgreSQL, ideal para aplicar novas configurações sem a necessidade de reiniciar o servidor.
+### 👨‍💻 Autor e Manutenção
 
-### 5. Ver status do PostgreSQL
-Exibe o status atual do serviço do PostgreSQL, mostrando se está ativo ou inativo, e outras informações detalhadas.
+Este script foi desenvolvido por **Iadsantos** para auxiliar na administração de bancos de dados PostgreSQL, oferecendo uma interface amigável e recursos completos de gestão. 🌟
 
-### 6. Listar todos os usuários
-Lista todos os usuários cadastrados no PostgreSQL, permitindo que você visualize rapidamente quem tem acesso ao seu banco de dados.
 
-### 7. Criar um novo usuário
-Cria um novo usuário no PostgreSQL com um banco de dados atribuído. Você pode definir o nome do usuário, o banco de dados e a senha de forma segura.
-
-### 8. Restaurar banco de dados
-Restaura um banco de dados a partir de um arquivo SQL. Antes de restaurar, o script faz um backup de segurança, garantindo que seus dados estejam sempre protegidos.
-
-### 9. Fazer backup do banco de dados
-Realiza um backup completo do banco de dados especificado, salvando-o em um local seguro no servidor.
-
-### 10. Deletar usuário e banco de dados
-Remove um usuário e seu banco de dados associado, após confirmação, garantindo que apenas usuários autorizados realizem esta ação irreversível.
-
-### 11. Sair
-Fecha o gerenciador de forma segura.
-
-## Como Usar 🚦
-
-### Executar Diretamente do GitHub
-
-Você pode executar o script diretamente do GitHub com os comandos abaixo:
+### 📦 Como Usar o Script
 
 **Usando `curl`:**
 ```bash
@@ -72,12 +67,12 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/iadsantos/geranciad
 sudo bash -c "$(wget -qO- https://raw.githubusercontent.com/iadsantos/geranciador-postgree/main/gerenciador.sh)"
 ```
 
-### Clonar o Repositório e Executar
+### 🛠️ Clonar o Repositório e Executar
 
 1. Clone este repositório:
    ```bash
    git clone https://github.com/iadsantos/geranciador-postgree.git
-   cd geranciador-postgree
+   cd gerenciador-postgree
    ```
 
 2. Dê permissão de execução ao script:
@@ -89,17 +84,3 @@ sudo bash -c "$(wget -qO- https://raw.githubusercontent.com/iadsantos/geranciado
    ```bash
    sudo ./gerenciador.sh
    ```
-
-## Requisitos 📋
-
-- Linux (Debian/Ubuntu)
-- Acesso root para instalação e gerenciamento de serviços
-- PostgreSQL 15 ou mais recente (pode ser instalado pelo script)
-
-## Desenvolvedor 👨‍💻
-
-Criado por **Iadsantos**, um desenvolvedor dedicado a criar soluções simples e eficientes para o gerenciamento de bancos de dados. Para saber mais sobre o trabalho dele, visite o GitHub: [Iadsantos](https://github.com/Iadsantos).
-
----
-
-Divirta-se utilizando o Gerenciador PostgreSQL e torne seu gerenciamento de banco de dados muito mais fácil! Se você encontrar algum problema ou tiver sugestões de melhorias, fique à vontade para contribuir. 🚀

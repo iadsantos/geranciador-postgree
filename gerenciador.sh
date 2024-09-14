@@ -369,37 +369,83 @@ deletar_usuario() {
     fi
 }
 
+# Função para desinstalar o PostgreSQL e remover todos os arquivos relacionados
+desinstalar_postgresql() {
+    read -p "Tem certeza que deseja desinstalar o PostgreSQL e apagar todos os dados relacionados? (s/n): " confirmacao
+    if [[ "$confirmacao" =~ ^[Ss]$ ]]; then
+        echo "Parando o serviço PostgreSQL..."
+        sudo systemctl stop postgresql
+
+        echo "Removendo o PostgreSQL e todos os pacotes associados..."
+        sudo apt-get --purge remove postgresql* -y
+
+        echo "Removendo diretórios de dados do PostgreSQL..."
+        sudo rm -rf /var/lib/postgresql/
+        sudo rm -rf /etc/postgresql/
+        sudo rm -rf /etc/postgresql-common/
+        sudo rm -rf /var/log/postgresql/
+        sudo rm -rf /usr/lib/postgresql/
+
+        echo "Removendo cache de pacotes PostgreSQL..."
+        sudo apt-get clean
+
+        echo "Limpando pacotes não utilizados..."
+        sudo apt-get autoremove -y
+        sudo apt-get autoclean -y
+
+        echo "Verificando e removendo vestígios no sistema de arquivos..."
+        sudo find / -name "*postgresql*" -exec rm -rf {} + 2>/dev/null
+
+        echo "Removendo entradas de serviços e reconfigurando o sistema..."
+        sudo systemctl daemon-reload
+
+        echo "PostgreSQL e todos os dados relacionados foram removidos com sucesso!"
+    else
+        echo "Operação de desinstalação cancelada."
+    fi
+}
+
+# Função para verificar o tamanho dos bancos de dados
+ver_tamanho_bancos() {
+    echo "Tamanho dos bancos de dados no PostgreSQL:"
+    sudo -u postgres psql -c "SELECT datname AS database_name, pg_size_pretty(pg_database_size(datname)) AS size FROM pg_database WHERE datistemplate = false ORDER BY pg_database_size(datname) DESC;"
+}
+
 # Menu de opções
 while true; do
     echo "----------------------------"
     echo "     Gerenciador PostgreSQL"
     echo "----------------------------"
     echo "1. Instalar PostgreSQL"
-    echo "2. Iniciar PostgreSQL"
-    echo "3. Parar PostgreSQL"
-    echo "4. Reiniciar PostgreSQL"
-    echo "5. Ver status do PostgreSQL"
-    echo "6. Listar todos os usuários"
-    echo "7. Criar um novo usuário"
-    echo "8. Restaurar banco de dados"
-    echo "9. Fazer backup do banco de dados"
-    echo "10. Deletar usuário e banco de dados"
-    echo "11. Sair"
+    echo "2. Criar um novo usuário"
+    echo "3. Deletar usuário e banco de dados"
+    echo "4. Listar todos os usuários"
+    echo "5. Fazer backup do banco de dados"
+    echo "6. Restaurar banco de dados"
+    echo "7. Ver tamanho dos bancos de dados"
+    echo "8. Iniciar PostgreSQL"
+    echo "9. Parar PostgreSQL"
+    echo "10. Reiniciar PostgreSQL"
+    echo "11. Ver status do PostgreSQL"
+    echo "12. Desinstalar PostgreSQL e apagar tudo"
+    echo "13. Sair"
     echo "----------------------------"
     read -p "Escolha uma opção: " opcao
 
     case $opcao in
         1) instalar_postgresql ;;
-        2) iniciar_postgresql ;;
-        3) parar_postgresql ;;
-        4) reiniciar_postgresql ;;
-        5) status_postgresql ;;
-        6) listar_usuarios ;;
-        7) criar_usuario ;;
-        8) restaurar_banco ;;
-        9) fazer_backup ;;
-        10) deletar_usuario ;;
-        11) echo "Saindo..."; exit 0 ;;
+        2) criar_usuario ;;
+        3) deletar_usuario ;;
+        4) listar_usuarios ;;
+        5) fazer_backup ;;
+        6) restaurar_banco ;;
+        7) ver_tamanho_bancos ;;
+        8) iniciar_postgresql ;;
+        9) parar_postgresql ;;
+        10) reiniciar_postgresql ;;
+        11) status_postgresql ;;
+        12) desinstalar_postgresql ;;
+        13) echo "Saindo..."; exit 0 ;;
         *) echo "Opção inválida!";;
     esac
 done
