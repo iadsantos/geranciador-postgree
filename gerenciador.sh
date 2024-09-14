@@ -15,14 +15,13 @@ if [ "$SCRIPT_DIR" == "/root" ]; then
     read -p "Deseja mover o script para a pasta /home e executá-lo de lá? (s/n): " resposta
 
     if [[ "$resposta" =~ ^[Ss]$ ]]; then
-        # Define o caminho de destino na pasta /home
+        # Define o caminho de destino na pasta /home com o nome correto do script
         destino="/home/$(basename "$0")"
         echo "Movendo o script para $destino..."
-        cp "$0" "$destino"  # Faz uma cópia do script para o destino
+        cp "$0" "$destino"  # Faz uma cópia do script para o destino correto
         chmod +x "$destino"  # Garante que o script seja executável
 
         echo "Executando o script a partir de /home..."
-        cd /home || exit  # Altera o diretório de execução para /home
         exec "$destino"  # Executa o script a partir da nova localização
         exit 0
     else
