@@ -55,14 +55,15 @@ Este script Bash é um gerenciador completo para o PostgreSQL, permitindo a inst
 Este script foi desenvolvido por **Iadsantos** para auxiliar na administração de bancos de dados PostgreSQL, oferecendo uma interface amigável e recursos completos de gestão. 🌟
 
 
+
 ### 📦 Como Usar o Script
 
-**Usando `curl`:**
+**Usando `curl`** (o script deve ser executado a partir do diretório `/home`):
 ```bash
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/iadsantos/geranciador-postgree/main/gerenciador.sh)"
 ```
 
-**Usando `wget`:**
+**Usando `wget`** (o script deve ser executado a partir do diretório `/home`):
 ```bash
 sudo bash -c "$(wget -qO- https://raw.githubusercontent.com/iadsantos/geranciador-postgree/main/gerenciador.sh)"
 ```
@@ -72,7 +73,7 @@ sudo bash -c "$(wget -qO- https://raw.githubusercontent.com/iadsantos/geranciado
 1. Clone este repositório:
    ```bash
    git clone https://github.com/iadsantos/geranciador-postgree.git
-   cd gerenciador-postgree
+   cd geranciador-postgree
    ```
 
 2. Dê permissão de execução ao script:
