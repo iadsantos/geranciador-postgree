@@ -6,6 +6,40 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Define a localização real do script
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+
+# Verifica se o script está sendo executado na pasta /root
+if [ "$SCRIPT_DIR" == "/root" ]; then
+    echo "Aviso: Este script está sendo executado na pasta /root."
+    read -p "Deseja mover o script para a pasta /home e executá-lo de lá? (s/n): " resposta
+
+    if [[ "$resposta" =~ ^[Ss]$ ]]; then
+        # Define o caminho de destino na pasta /home
+        destino="/home/$(basename "$0")"
+        echo "Movendo o script para $destino..."
+        cp "$0" "$destino"  # Faz uma cópia do script para o destino
+        chmod +x "$destino"  # Garante que o script seja executável
+
+        echo "Executando o script a partir de /home..."
+        cd /home || exit  # Altera o diretório de execução para /home
+        exec "$destino"  # Executa o script a partir da nova localização
+        exit 0
+    else
+        echo "Finalizando o script."
+        exit 1
+    fi
+fi
+
+# Verifica se o script está sendo executado na pasta /home e, se sim, continua sem mostrar mensagens
+if [[ "$SCRIPT_DIR" == "/home" ]]; then
+    echo "Script já está sendo executado na pasta /home. Continuando a execução..."
+fi
+
+# Define o diretório de trabalho para /home se o script estiver sendo executado de outro lugar
+WORK_DIR="/home"
+cd "$WORK_DIR" || exit
+
 # Função para instalar o PostgreSQL
 instalar_postgresql() {
     if dpkg -l | grep -qw postgresql; then
@@ -124,7 +158,7 @@ fazer_backup() {
         break
     done
 
-    caminho_backup="/home/backups"
+    caminho_backup="$WORK_DIR/backups"
 
     if [ ! -d "$caminho_backup" ]; then
         echo "Diretório $caminho_backup não existe. Criando..."
@@ -148,7 +182,7 @@ fazer_backup() {
 # Função para criar um backup de segurança do banco de dados antes de restaurar
 backup_seguranca() {
     local nome_banco="$1"
-    local caminho_backup="/home/backups/seguranca"
+    local caminho_backup="$WORK_DIR/backups/seguranca"
 
     if banco_vazio "$nome_banco"; then
         echo "O banco de dados $nome_banco está vazio. Nenhum backup de segurança necessário."
@@ -187,7 +221,7 @@ restaurar_banco() {
     read -p "Digite o nome do arquivo de backup (ex: backup.backup): " arquivo_backup
 
     if [[ "$arquivo_backup" != /* ]]; then
-        arquivo_backup="/home/backups/$arquivo_backup"
+        arquivo_backup="$WORK_DIR/backups/$arquivo_backup"
     fi
 
     if [ -f "$arquivo_backup" ]; then

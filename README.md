@@ -1,4 +1,22 @@
 
+## Novidades da Versão 4 🚀
+
+A versão 4 do Gerenciador PostgreSQL traz várias melhorias e novas funcionalidades para facilitar ainda mais a administração do seu banco de dados:
+
+### 1. Detecção de Execução na Pasta `/root`
+O script agora detecta quando é executado na pasta `/root` e oferece a opção de mover automaticamente para a pasta `/home` para evitar problemas de permissão.
+
+### 2. Execução Automática na Nova Localização
+Após mover o script, ele é executado automaticamente na nova localização, garantindo que o fluxo de trabalho não seja interrompido.
+
+### 3. Backup de Segurança Opcional
+Ao restaurar um banco de dados, o usuário pode optar por realizar um backup de segurança antes do processo de restauração.
+
+### 4. Formato Atualizado de Backup
+Os backups agora são salvos com o novo formato de data, facilitando a identificação: `nome_01_09_2023_01-01hr`.
+
+Essas melhorias tornam o script mais robusto e adaptável, mantendo o foco na segurança e eficiência na gestão dos seus bancos de dados.
+
 # Gerenciador PostgreSQL 🚀
 
 Bem-vindo ao **Gerenciador PostgreSQL**! Este script é uma ferramenta poderosa e fácil de usar que ajuda você a gerenciar seu banco de dados PostgreSQL com facilidade e eficiência. Criado para desenvolvedores, DBAs e entusiastas, ele oferece uma interface interativa para realizar tarefas comuns com o PostgreSQL diretamente do terminal.
