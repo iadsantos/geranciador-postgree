@@ -211,25 +211,25 @@ fazer_backup() {
             exit 1  # Encerra o script em caso de erro ao criar o diretório
         fi
 
-        # Assegura permissões 755 com sudo, para maior segurança
-        echo "Alterando permissões do diretório $caminho_backup para 755..."
-        sudo chmod 755 "$caminho_backup"
+        # Assegura permissões 777 com sudo, para maior segurança
+        echo "Alterando permissões do diretório $caminho_backup para 777..."
+        chmod 777 "$caminho_backup"
 
         # Verifique se a permissão foi aplicada
         if [ $? -eq 0 ]; then
-            echo "Permissões 755 aplicadas com sucesso!"
+            echo "Permissões 777 aplicadas com sucesso!"
         else
             echo "Erro ao alterar permissões do diretório $caminho_backup."
             exit 1  # Encerra o script em caso de erro ao alterar permissões
         fi
     else
-        # Verifica se as permissões do diretório estão corretas (755)
+        # Verifica se as permissões do diretório estão corretas (777)
         permissoes=$(stat -c %a "$caminho_backup")
-        if [ "$permissoes" != "755" ]; then
-            echo "As permissões do diretório $caminho_backup não são 755. Ajustando..."
-            sudo chmod 755 "$caminho_backup"
+        if [ "$permissoes" != "777" ]; then
+            echo "As permissões do diretório $caminho_backup não são 777. Ajustando..."
+            sudo chmod 777 "$caminho_backup"
             if [ $? -eq 0 ]; then
-                echo "Permissões 755 aplicadas com sucesso!"
+                echo "Permissões 777 aplicadas com sucesso!"
             else
                 echo "Erro ao alterar permissões do diretório $caminho_backup."
                 exit 1  # Encerra o script em caso de erro ao alterar permissões
@@ -263,7 +263,7 @@ backup_seguranca() {
     if [ ! -d "$caminho_backup" ]; then
         echo "Criando o diretório de backup de segurança em $caminho_backup..."
         mkdir -p "$caminho_backup"
-        chmod 755 "$caminho_backup"
+        chmod 777 "$caminho_backup"
     fi
 
     # Define o nome do arquivo de backup de segurança com o formato desejado
