@@ -192,10 +192,43 @@ fazer_backup() {
 
     caminho_backup="$WORK_DIR/backups"
 
+    # Verifica se o diretório de backups existe. Se não, cria e ajusta as permissões.
     if [ ! -d "$caminho_backup" ]; then
         echo "Diretório $caminho_backup não existe. Criando..."
         mkdir -p "$caminho_backup"
-        chmod 777 "$caminho_backup"
+        
+        # Verifique se o diretório foi criado com sucesso
+        if [ $? -eq 0 ]; then
+            echo "Diretório criado com sucesso."
+        else
+            echo "Erro ao criar o diretório $caminho_backup."
+            exit 1  # Encerra o script em caso de erro ao criar o diretório
+        fi
+
+        # Asegura permissões 777 com sudo, caso necessário
+        echo "Alterando permissões do diretório $caminho_backup para 777..."
+        sudo chmod 777 "$caminho_backup"
+
+        # Verifique se a permissão foi aplicada
+        if [ $? -eq 0 ]; then
+            echo "Permissões 777 aplicadas com sucesso!"
+        else
+            echo "Erro ao alterar permissões do diretório $caminho_backup."
+            exit 1  # Encerra o script em caso de erro ao alterar permissões
+        fi
+    else
+        # Verifica se as permissões do diretório estão corretas (777)
+        permissoes=$(stat -c %a "$caminho_backup")
+        if [ "$permissoes" != "777" ]; then
+            echo "As permissões do diretório $caminho_backup não são 777. Ajustando..."
+            sudo chmod 777 "$caminho_backup"
+            if [ $? -eq 0 ]; then
+                echo "Permissões 777 aplicadas com sucesso!"
+            else
+                echo "Erro ao alterar permissões do diretório $caminho_backup."
+                exit 1  # Encerra o script em caso de erro ao alterar permissões
+            fi
+        fi
     fi
 
     # Define o nome do arquivo de backup com o formato desejado
