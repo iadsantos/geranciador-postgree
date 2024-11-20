@@ -137,14 +137,14 @@ banco_existe() {
 # Função para verificar se o banco de dados está vazio
 banco_vazio() {
     local nome_banco="$1"
-    local tabela_existe=$(sudo -u postgres psql -d "$nome_banco" -t -c \
-    "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' LIMIT 1);" | xargs)
+    local tabela_existe=$(sudo -u postgres psql -t -A -d "$nome_banco" -c \
+    "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' LIMIT 1);")
 
-    local possui_dados=$(sudo -u postgres psql -d "$nome_banco" -t -c \
+    local possui_dados=$(sudo -u postgres psql -t -A -d "$nome_banco" -c \
     "SELECT EXISTS (SELECT 1 FROM information_schema.tables 
      WHERE table_schema = 'public' 
      AND (SELECT COUNT(*) FROM information_schema.tables 
-          WHERE table_schema = 'public') > 0 LIMIT 1);" | xargs)
+          WHERE table_schema = 'public') > 0 LIMIT 1);")
 
     if [[ "$tabela_existe" == "t" && "$possui_dados" == "t" ]]; then
         return 1  # Banco NÃO está vazio
@@ -464,6 +464,118 @@ ver_tamanho_bancos() {
     sudo -u postgres psql -c "SELECT datname AS database_name, pg_size_pretty(pg_database_size(datname)) AS size FROM pg_database WHERE datistemplate = false ORDER BY pg_database_size(datname) DESC;"
 }
 
+# Função para mostrar o limite de conexões do PostgreSQL
+mostrar_limite_conexoes() {
+    CONFIG_FILE=$(sudo -u postgres psql -t -A -c "SHOW config_file;")
+    
+    if [ -f "$CONFIG_FILE" ]; then
+        max_conexoes=$(grep -E "^max_connections\s*=" "$CONFIG_FILE" | awk -F '=' '{print $2}' | tr -d ' ')
+        echo "O limite atual de conexões do PostgreSQL é: $max_conexoes"
+    else
+        echo "Erro: Arquivo de configuração do PostgreSQL não encontrado."
+    fi
+}
+
+# Função para alterar o limite de conexões do PostgreSQL
+alterar_limite_conexoes() {
+    CONFIG_FILE=$(sudo -u postgres psql -t -A -c "SHOW config_file;")
+
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo "Erro: Arquivo de configuração do PostgreSQL não encontrado."
+        return
+    fi
+
+    # Backup do arquivo de configuração
+    sudo cp "$CONFIG_FILE" "${CONFIG_FILE}.backup_$(date +%d_%m_%Y_%H-%Mhr)"
+    echo "Backup do arquivo de configuração criado em ${CONFIG_FILE}.backup_$(date +%d_%m_%Y_%H-%Mhr)}"
+
+    # Solicita o novo limite ao usuário
+    while true; do
+        read -p "Digite o novo limite de conexões (número inteiro): " novo_limite
+        if [[ "$novo_limite" =~ ^[0-9]+$ ]]; then
+            break
+        else
+            echo "Entrada inválida. Por favor, insira um número inteiro."
+        fi
+    done
+
+    # Atualiza o valor no arquivo de configuração
+    if grep -q "^max_connections" "$CONFIG_FILE"; then
+        sudo sed -i "s/^#*max_connections\s*=.*/max_connections = $novo_limite/" "$CONFIG_FILE"
+    else
+        echo "max_connections = $novo_limite" | sudo tee -a "$CONFIG_FILE" > /dev/null
+    fi
+
+    echo "Limite de conexões atualizado para $novo_limite."
+
+    # Reinicia o serviço PostgreSQL para aplicar as mudanças
+    sudo systemctl restart postgresql
+
+    if [ $? -eq 0 ]; then
+        echo "Serviço PostgreSQL reiniciado com sucesso."
+    else
+        echo "Erro ao reiniciar o serviço PostgreSQL."
+    fi
+}
+
+# Função para habilitar/desabilitar conexões remotas no PostgreSQL
+gerenciar_conexoes_remotas() {
+    echo "1. Habilitar conexões remotas"
+    echo "2. Desabilitar conexões remotas"
+    read -p "Escolha uma opção (1 ou 2): " escolha
+
+    CONFIG_FILE=$(sudo -u postgres psql -t -A -c "SHOW config_file;")
+    HBA_FILE=$(sudo -u postgres psql -t -A -c "SHOW hba_file;")
+
+    if [ ! -f "$CONFIG_FILE" ] || [ ! -f "$HBA_FILE" ]; then
+        echo "Erro: Arquivos de configuração do PostgreSQL não encontrados."
+        return
+    fi
+
+    # Backup dos arquivos de configuração
+    sudo cp "$CONFIG_FILE" "${CONFIG_FILE}.backup_$(date +%d_%m_%Y_%H-%Mhr)"
+    sudo cp "$HBA_FILE" "${HBA_FILE}.backup_$(date +%d_%m_%Y_%H-%Mhr)"
+    echo "Backups dos arquivos de configuração criados."
+
+    case $escolha in
+        1)
+            # Habilitar conexões remotas
+            sudo sed -i "s/^#*listen_addresses\s*=.*/listen_addresses = '*'/" "$CONFIG_FILE"
+            echo "listen_addresses configurado para '*'."
+
+            # Adicionar regra para permitir todas as conexões remotas (ajuste conforme necessário)
+            if ! grep -q "^host\s\+all\s\+all\s\+0\.0\.0\.0/0\s\+md5" "$HBA_FILE"; then
+                echo "host all all 0.0.0.0/0 md5" | sudo tee -a "$HBA_FILE" > /dev/null
+                echo "Regra adicionada ao pg_hba.conf para permitir conexões remotas."
+            else
+                echo "Regra para conexões remotas já existe no pg_hba.conf."
+            fi
+            ;;
+        2)
+            # Desabilitar conexões remotas
+            sudo sed -i "s/^#*listen_addresses\s*=.*/listen_addresses = 'localhost'/" "$CONFIG_FILE"
+            echo "listen_addresses configurado para 'localhost'."
+
+            # Remover regra que permite conexões remotas
+            sudo sed -i "/^host\s\+all\s\+all\s\+0\.0\.0\.0\/0\s\+md5/d" "$HBA_FILE"
+            echo "Regra para conexões remotas removida do pg_hba.conf."
+            ;;
+        *)
+            echo "Opção inválida."
+            return
+            ;;
+    esac
+
+    # Reinicia o serviço PostgreSQL para aplicar as mudanças
+    sudo systemctl restart postgresql
+
+    if [ $? -eq 0 ]; then
+        echo "Serviço PostgreSQL reiniciado com sucesso."
+    else
+        echo "Erro ao reiniciar o serviço PostgreSQL."
+    fi
+}
+
 # Menu de opções
 while true; do
     echo "----------------------------"
@@ -481,7 +593,10 @@ while true; do
     echo "10. Reiniciar PostgreSQL"
     echo "11. Ver status do PostgreSQL"
     echo "12. Desinstalar PostgreSQL e apagar tudo"
-    echo "13. Sair"
+    echo "13. Mostrar limite de conexão do PostgreSQL"
+    echo "14. Alterar limite de conexão do PostgreSQL"
+    echo "15. Habilitar/Desabilitar conexões remotas no PostgreSQL"
+    echo "16. Sair"
     echo "----------------------------"
     read -p "Escolha uma opção: " opcao
 
@@ -498,7 +613,10 @@ while true; do
         10) reiniciar_postgresql ;;
         11) status_postgresql ;;
         12) desinstalar_postgresql ;;
-        13) echo "Saindo..."; exit 0 ;;
+        13) mostrar_limite_conexoes ;;
+        14) alterar_limite_conexoes ;;
+        15) gerenciar_conexoes_remotas ;;
+        16) echo "Saindo..."; exit 0 ;;
         *) echo "Opção inválida!";;
     esac
 done
