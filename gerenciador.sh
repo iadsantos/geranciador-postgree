@@ -173,21 +173,27 @@ validar_nome() {
 
 # Função para criar um backup do banco de dados no formato compatível com pg_restore
 fazer_backup() {
+    # Lista os bancos de dados disponíveis, excluindo templates e o banco de sistema
+    bancos=($(sudo -u postgres psql -At -c "SELECT datname FROM pg_database WHERE datistemplate = false AND datname <> 'postgres';"))
+
+    if [ ${#bancos[@]} -eq 0 ]; then
+        echo "Nenhum banco de dados disponível para backup."
+        return
+    fi
+
+    echo "Bancos de dados disponíveis para backup:"
+    for i in "${!bancos[@]}"; do
+        echo "$((i+1)). ${bancos[$i]}"
+    done
+
     while true; do
-        read -p "Digite o nome do banco de dados que deseja fazer backup: " nome_banco
-        nome_banco=$(sanitizar_nome "$nome_banco")
-
-        if [[ -z "$nome_banco" ]] || ! validar_nome "$nome_banco"; then
-            echo "Erro: O nome do banco de dados deve conter apenas letras e números e não pode estar vazio."
-            continue
+        read -p "Digite o número do banco de dados que deseja fazer backup: " escolha
+        if [[ "$escolha" =~ ^[0-9]+$ ]] && [ "$escolha" -ge 1 ] && [ "$escolha" -le "${#bancos[@]}" ]; then
+            nome_banco="${bancos[$((escolha-1))]}"
+            break
+        else
+            echo "Escolha inválida. Por favor, insira um número válido."
         fi
-
-        if ! banco_existe "$nome_banco"; then
-            echo "Erro: O banco de dados $nome_banco não existe!"
-            continue
-        fi
-
-        break
     done
 
     caminho_backup="$WORK_DIR/backups"
@@ -196,7 +202,7 @@ fazer_backup() {
     if [ ! -d "$caminho_backup" ]; then
         echo "Diretório $caminho_backup não existe. Criando..."
         mkdir -p "$caminho_backup"
-        
+
         # Verifique se o diretório foi criado com sucesso
         if [ $? -eq 0 ]; then
             echo "Diretório criado com sucesso."
@@ -205,25 +211,25 @@ fazer_backup() {
             exit 1  # Encerra o script em caso de erro ao criar o diretório
         fi
 
-        # Asegura permissões 777 com sudo, caso necessário
-        echo "Alterando permissões do diretório $caminho_backup para 777..."
-        sudo chmod 777 "$caminho_backup"
+        # Assegura permissões 755 com sudo, para maior segurança
+        echo "Alterando permissões do diretório $caminho_backup para 755..."
+        sudo chmod 755 "$caminho_backup"
 
         # Verifique se a permissão foi aplicada
         if [ $? -eq 0 ]; then
-            echo "Permissões 777 aplicadas com sucesso!"
+            echo "Permissões 755 aplicadas com sucesso!"
         else
             echo "Erro ao alterar permissões do diretório $caminho_backup."
             exit 1  # Encerra o script em caso de erro ao alterar permissões
         fi
     else
-        # Verifica se as permissões do diretório estão corretas (777)
+        # Verifica se as permissões do diretório estão corretas (755)
         permissoes=$(stat -c %a "$caminho_backup")
-        if [ "$permissoes" != "777" ]; then
-            echo "As permissões do diretório $caminho_backup não são 777. Ajustando..."
-            sudo chmod 777 "$caminho_backup"
+        if [ "$permissoes" != "755" ]; then
+            echo "As permissões do diretório $caminho_backup não são 755. Ajustando..."
+            sudo chmod 755 "$caminho_backup"
             if [ $? -eq 0 ]; then
-                echo "Permissões 777 aplicadas com sucesso!"
+                echo "Permissões 755 aplicadas com sucesso!"
             else
                 echo "Erro ao alterar permissões do diretório $caminho_backup."
                 exit 1  # Encerra o script em caso de erro ao alterar permissões
@@ -257,7 +263,7 @@ backup_seguranca() {
     if [ ! -d "$caminho_backup" ]; then
         echo "Criando o diretório de backup de segurança em $caminho_backup..."
         mkdir -p "$caminho_backup"
-        chmod 777 "$caminho_backup"
+        chmod 755 "$caminho_backup"
     fi
 
     # Define o nome do arquivo de backup de segurança com o formato desejado
@@ -275,13 +281,28 @@ backup_seguranca() {
 
 # Função para restaurar um banco de dados a partir de um arquivo de backup
 restaurar_banco() {
-    read -p "Digite o nome do banco de dados que deseja restaurar: " nome_banco
-    nome_banco=$(sanitizar_nome "$nome_banco")
+    # Lista os bancos de dados disponíveis, excluindo templates e o banco de sistema
+    bancos=($(sudo -u postgres psql -At -c "SELECT datname FROM pg_database WHERE datistemplate = false AND datname <> 'postgres';"))
 
-    if ! banco_existe "$nome_banco"; then
-        echo "Erro: O banco de dados $nome_banco não existe!"
+    if [ ${#bancos[@]} -eq 0 ]; then
+        echo "Nenhum banco de dados disponível para restauração."
         return
     fi
+
+    echo "Bancos de dados disponíveis para restauração:"
+    for i in "${!bancos[@]}"; do
+        echo "$((i+1)). ${bancos[$i]}"
+    done
+
+    while true; do
+        read -p "Digite o número do banco de dados que deseja restaurar: " escolha
+        if [[ "$escolha" =~ ^[0-9]+$ ]] && [ "$escolha" -ge 1 ] && [ "$escolha" -le "${#bancos[@]}" ]; then
+            nome_banco="${bancos[$((escolha-1))]}"
+            break
+        else
+            echo "Escolha inválida. Por favor, insira um número válido."
+        fi
+    done
 
     read -p "Digite o nome do arquivo de backup (ex: backup.backup): " arquivo_backup
 
@@ -378,9 +399,9 @@ deletar_usuario() {
         nome_usuario="${usuarios[$((escolha-1))]}"
         read -p "Tem certeza que deseja deletar o usuário $nome_usuario e seu banco associado? (s/n): " confirmacao
         if [[ "$confirmacao" =~ ^[Ss]$ ]]; then
-            banco_usuario=$(sudo -u postgres psql -lqt | cut -d \| -f 1 | awk '{$1=$1};1' | grep -w "$nome_usuario")
+            banco_usuario=$(sudo -u postgres psql -At -c "SELECT datname FROM pg_database WHERE datname = '$nome_usuario';")
 
-            if banco_existe "$banco_usuario"; then
+            if [ -n "$banco_usuario" ]; then
                 sudo -u postgres psql -c "DROP DATABASE IF EXISTS $banco_usuario;"
             fi
             
